@@ -3,8 +3,8 @@
 
   const SIZE = 15;
   const PROBABILITIES = {
-    black: [10, 30, 50, 70, 90],
-    white: [90, 70, 50, 30, 10],
+    black: [10, 30],
+    white: [90, 70],
   };
   const DIRECTIONS = [[1, 0], [0, 1], [1, 1], [1, -1]];
 
@@ -14,6 +14,7 @@
   const nextProbability = document.querySelector("#nextProbability");
   const message = document.querySelector("#message");
   const observeButton = document.querySelector("#observeButton");
+  const entangleButton = document.querySelector("#entangleButton");
   const observeHint = document.querySelector("#observeHint");
   const resetButton = document.querySelector("#resetButton");
 
@@ -27,9 +28,14 @@
       observeUnlocked: false,
       observing: false,
       result: null,
+      resultReason: null,
       reviewingResult: false,
       winningCells: new Set(),
       selectedReviewIndex: null,
+      entangleRemaining: { black: 1, white: 1 },
+      entangleMode: false,
+      entangleAnchor: null,
+      nextEntanglementId: 1,
     };
   }
 
@@ -46,11 +52,59 @@
   function isInside(row, column) { return row >= 0 && row < SIZE && column >= 0 && column < SIZE; }
 
   function placeStone(index) {
-    if (state.cells[index] || state.observing || state.result) return;
+    if (state.observing || state.result) return;
+
+    if (state.entangleMode) {
+      handleEntangleSelection(index);
+      return;
+    }
+    if (state.cells[index]) return;
 
     const player = state.turn;
-    state.cells[index] = { probabilityWhite: probabilityFor(player), placedBy: player, observed: null };
+    state.cells[index] = {
+      probabilityWhite: probabilityFor(player),
+      placedBy: player,
+      observed: null,
+      entanglementId: null,
+    };
     state.placed[player] += 1;
+    state.observeUnlocked ||= hasPotentialFive();
+    state.turn = player === "black" ? "white" : "black";
+    render();
+  }
+
+  function toggleEntangleMode() {
+    const player = state.turn;
+    if (state.observing || state.result || state.entangleRemaining[player] === 0) return;
+    if (!state.cells.some((cell) => cell?.placedBy === player && !cell.entanglementId)) return;
+    state.entangleMode = !state.entangleMode;
+    state.entangleAnchor = null;
+    render();
+  }
+
+  function handleEntangleSelection(index) {
+    const cell = state.cells[index];
+    const player = state.turn;
+    if (cell) {
+      if (cell.placedBy === player && !cell.entanglementId) state.entangleAnchor = index;
+      render();
+      return;
+    }
+    if (state.entangleAnchor === null) return;
+
+    const entanglementId = state.nextEntanglementId;
+    state.nextEntanglementId += 1;
+    state.cells[state.entangleAnchor].entanglementId = entanglementId;
+    state.cells[index] = {
+      probabilityWhite: probabilityFor(player),
+      placedBy: player,
+      observed: null,
+      entanglementId,
+    };
+    state.placed[player] += 1;
+    state.entangleRemaining[player] = 0;
+    state.entangleMode = false;
+    state.entangleAnchor = null;
     state.observeUnlocked ||= hasPotentialFive();
     state.turn = player === "black" ? "white" : "black";
     render();
@@ -124,9 +178,17 @@
       return;
     }
 
+    const observer = state.turn;
     state.observing = true;
+    const entangledRolls = new Map();
     state.cells.forEach((cell) => {
-      if (cell) cell.observed = Math.random() * 100 < cell.probabilityWhite ? "white" : "black";
+      if (!cell) return;
+      let roll = Math.random() * 100;
+      if (cell.entanglementId) {
+        if (!entangledRolls.has(cell.entanglementId)) entangledRolls.set(cell.entanglementId, roll);
+        roll = entangledRolls.get(cell.entanglementId);
+      }
+      cell.observed = roll < cell.probabilityWhite ? "white" : "black";
     });
 
     const whiteWins = hasFive("white");
@@ -135,9 +197,13 @@
       ...findWinningCells("white"),
       ...findWinningCells("black"),
     ]);
-    if (whiteWins && blackWins) state.result = "draw";
+    if (whiteWins && blackWins) {
+      state.result = observer;
+      state.resultReason = "simultaneous";
+    }
     else if (whiteWins) state.result = "white";
     else if (blackWins) state.result = "black";
+    if (!state.result) state.turn = observer === "black" ? "white" : "black";
     render();
   }
 
@@ -161,14 +227,19 @@
         const observedColor = selected.observed === "black" ? "黒" : "白";
         const betrayal = selected.observed !== selected.placedBy ? "（裏切り）" : "";
         const winning = state.winningCells.has(state.selectedReviewIndex) ? "・勝負を決めた駒" : "";
-        return `${placedColor}${ownColorProbability(selected)}% → ${observedColor}${betrayal}${winning}`;
+        const entangled = selected.entanglementId ? "・もつれ駒" : "";
+        return `${placedColor}${ownColorProbability(selected)}% → ${observedColor}${betrayal}${winning}${entangled}`;
       }
       const betrayals = state.cells.filter((cell) => cell && cell.observed !== cell.placedBy).length;
       return `裏切り ${betrayals}個。気になる駒をタップすると詳細を確認できます。`;
     }
-    if (state.result === "draw") return "白と黒が同時に五目を完成。引き分けです。";
+    if (state.resultReason === "simultaneous") {
+      return `白黒同時に五目が完成。観測した${state.result === "black" ? "黒" : "白"}の勝ちです。`;
+    }
     if (state.result) return `${state.result === "black" ? "黒" : "白"}の五目が完成しました。`;
-    if (state.observing) return "観測中です。勝負はまだ確定していません。";
+    if (state.observing) return `観測中です。勝負がつかなければ次は${state.turn === "black" ? "黒" : "白"}番です。`;
+    if (state.entangleMode && state.entangleAnchor === null) return "もつれさせる自分の駒を1個選んでください。";
+    if (state.entangleMode) return "次に空いている交点を選ぶと、次の駒ともつれます。";
     return `${state.turn === "black" ? "黒" : "白"}番です。交点を選んでください。`;
   }
 
@@ -179,14 +250,16 @@
       const column = index % SIZE;
       const button = document.createElement("button");
       button.type = "button";
-      button.className = `cell${cell ? " occupied" : ""}${state.winningCells.has(index) ? " winning" : ""}${state.selectedReviewIndex === index ? " selected" : ""}`;
+      button.className = `cell${cell ? " occupied" : ""}${state.winningCells.has(index) ? " winning" : ""}${state.selectedReviewIndex === index ? " selected" : ""}${state.entangleAnchor === index ? " entangle-anchor" : ""}`;
       button.setAttribute("role", "gridcell");
       button.setAttribute("aria-label", cell
         ? `${row + 1}行${column + 1}列、${cell.placedBy === "black" ? "黒" : "白"}になる確率${ownColorProbability(cell)}%`
         : `${row + 1}行${column + 1}列に置く`);
       button.disabled = state.reviewingResult
         ? !cell
-        : Boolean(cell || state.observing || state.result);
+        : state.entangleMode
+          ? Boolean(state.observing || state.result || (cell && (cell.placedBy !== state.turn || cell.entanglementId)))
+          : Boolean(cell || state.observing || state.result);
       button.addEventListener("click", () => state.reviewingResult ? selectReviewStone(index) : placeStone(index));
 
       if (cell) {
@@ -204,6 +277,33 @@
       }
       boardElement.append(button);
     });
+    renderEntanglementLines();
+  }
+
+  function renderEntanglementLines() {
+    const groups = new Map();
+    state.cells.forEach((cell, index) => {
+      if (!cell?.entanglementId) return;
+      if (!groups.has(cell.entanglementId)) groups.set(cell.entanglementId, []);
+      groups.get(cell.entanglementId).push(index);
+    });
+    if (groups.size === 0) return;
+
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.classList.add("entanglement-layer");
+    svg.setAttribute("viewBox", "0 0 100 100");
+    svg.setAttribute("aria-hidden", "true");
+    groups.forEach((indices) => {
+      if (indices.length !== 2) return;
+      const [first, second] = indices;
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("x1", ((first % SIZE + 0.5) / SIZE) * 100);
+      line.setAttribute("y1", ((Math.floor(first / SIZE) + 0.5) / SIZE) * 100);
+      line.setAttribute("x2", ((second % SIZE + 0.5) / SIZE) * 100);
+      line.setAttribute("y2", ((Math.floor(second / SIZE) + 0.5) / SIZE) * 100);
+      svg.append(line);
+    });
+    boardElement.append(svg);
   }
 
   function render() {
@@ -217,7 +317,19 @@
     nextProbability.textContent = `${playerLabel} ${ownProbability}%`;
     message.textContent = statusMessage();
 
-    observeButton.disabled = !state.observeUnlocked;
+    const hasEligibleAnchor = state.cells.some((cell) => cell?.placedBy === state.turn && !cell.entanglementId);
+    entangleButton.disabled = Boolean(
+      state.observing
+      || state.result
+      || state.entangleRemaining[state.turn] === 0
+      || !hasEligibleAnchor
+    );
+    entangleButton.classList.toggle("active", state.entangleMode);
+    entangleButton.textContent = state.entangleRemaining[state.turn] === 0
+      ? "もつれ済み"
+      : state.entangleMode ? "もつれ取消" : "もつれ 1";
+
+    observeButton.disabled = !state.observeUnlocked || state.entangleMode;
     observeButton.textContent = state.result
       ? state.reviewingResult ? "結果に戻る" : "確率を確認"
       : state.observing ? "観測をやめる" : "観測する";
@@ -231,6 +343,7 @@
   }
 
   observeButton.addEventListener("click", observe);
+  entangleButton.addEventListener("click", toggleEntangleMode);
   resetButton.addEventListener("click", resetGame);
   resetGame();
 })();
