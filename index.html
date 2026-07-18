@@ -4,14 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#17130f" />
-    <title>量子五目並べ v1.4</title>
-    <link rel="stylesheet" href="styles.css?v=1.4" />
+    <title>量子五目並べ v1.5</title>
+    <link rel="stylesheet" href="styles.css?v=1.5" />
   </head>
   <body>
     <main class="app">
       <header class="hero">
         <p class="eyebrow">QUANTUM GOMOKU</p>
-        <h1>量子五目並べ <span class="version">v1.4</span></h1>
+        <h1>量子五目並べ <span class="version">v1.5</span></h1>
         <p class="lead">置いた時点では、まだ白でも黒でもない。</p>
       </header>
 
@@ -48,10 +48,10 @@
         <summary>遊び方</summary>
         <ol>
           <li>黒と白で交互に、盤上の交点へ量子駒を置きます。</li>
-          <li>駒は表示された確率で白になり、それ以外は黒になります。</li>
+          <li>黒は「黒90%・黒70%」、白は「白90%・白70%」の駒を交互に使います。</li>
           <li>駒が5つ連続すると「観測」が解禁されます。</li>
-          <li>観測中だけ全駒の色が確定し、五目ができれば勝利です。</li>
-          <li>勝負がつかなければ観測をやめ、未確定へ戻して続行します。</li>
+          <li>観測中だけ全駒の色が確定し、五目ができれば勝利です。黒白双方に五目ができた場合は、観測したプレイヤーの勝ちです。</li>
+          <li>観測は1手として数えます。勝負がつかなければ観測をやめ、未確定へ戻し、観測した側の手番を飛ばして相手から続行します。</li>
         </ol>
         <h2>量子もつれの使い方</h2>
         <ol>
@@ -64,6 +64,6 @@
         </ol>
       </details>
     </main>
-    <script src="game.js?v=1.4"></script>
+    <script src="game.js?v=1.5"></script>
   </body>
 </html>
