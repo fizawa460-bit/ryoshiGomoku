@@ -3,8 +3,8 @@
 
   const SIZE = 15;
   const PROBABILITIES = {
-    black: [10, 30, 50, 70, 90],
-    white: [90, 70, 50, 30, 10],
+    black: [10, 30],
+    white: [90, 70],
   };
   const DIRECTIONS = [[1, 0], [0, 1], [1, 1], [1, -1]];
 
@@ -28,6 +28,7 @@
       observeUnlocked: false,
       observing: false,
       result: null,
+      resultReason: null,
       reviewingResult: false,
       winningCells: new Set(),
       selectedReviewIndex: null,
@@ -177,6 +178,7 @@
       return;
     }
 
+    const observer = state.turn;
     state.observing = true;
     const entangledRolls = new Map();
     state.cells.forEach((cell) => {
@@ -195,9 +197,13 @@
       ...findWinningCells("white"),
       ...findWinningCells("black"),
     ]);
-    if (whiteWins && blackWins) state.result = "draw";
+    if (whiteWins && blackWins) {
+      state.result = observer;
+      state.resultReason = "simultaneous";
+    }
     else if (whiteWins) state.result = "white";
     else if (blackWins) state.result = "black";
+    if (!state.result) state.turn = observer === "black" ? "white" : "black";
     render();
   }
 
@@ -227,9 +233,11 @@
       const betrayals = state.cells.filter((cell) => cell && cell.observed !== cell.placedBy).length;
       return `裏切り ${betrayals}個。気になる駒をタップすると詳細を確認できます。`;
     }
-    if (state.result === "draw") return "白と黒が同時に五目を完成。引き分けです。";
+    if (state.resultReason === "simultaneous") {
+      return `白黒同時に五目が完成。観測した${state.result === "black" ? "黒" : "白"}の勝ちです。`;
+    }
     if (state.result) return `${state.result === "black" ? "黒" : "白"}の五目が完成しました。`;
-    if (state.observing) return "観測中です。勝負はまだ確定していません。";
+    if (state.observing) return `観測中です。勝負がつかなければ次は${state.turn === "black" ? "黒" : "白"}番です。`;
     if (state.entangleMode && state.entangleAnchor === null) return "もつれさせる自分の駒を1個選んでください。";
     if (state.entangleMode) return "次に空いている交点を選ぶと、次の駒ともつれます。";
     return `${state.turn === "black" ? "黒" : "白"}番です。交点を選んでください。`;
