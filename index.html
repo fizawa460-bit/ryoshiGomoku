@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#17130f" />
+    <title>量子五目並べ</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="hero">
+        <p class="eyebrow">QUANTUM GOMOKU</p>
+        <h1>量子五目並べ</h1>
+        <p class="lead">置いた時点では、まだ白でも黒でもない。</p>
+      </header>
+
+      <section class="game-card" aria-label="量子五目並べ">
+        <div class="status-row">
+          <div>
+            <span class="label">手番</span>
+            <strong id="turnText">黒番</strong>
+          </div>
+          <div class="next-stone-wrap">
+            <span class="label">次の駒</span>
+            <div id="nextStone" class="stone preview" aria-hidden="true"></div>
+            <strong id="nextProbability">白 10%</strong>
+          </div>
+        </div>
+
+        <div id="message" class="message" role="status" aria-live="polite">
+          黒番です。交点を選んでください。
+        </div>
+
+        <div class="board-shell">
+          <div id="board" class="board" role="grid" aria-label="15路盤"></div>
+        </div>
+
+        <div class="controls">
+          <button id="observeButton" class="primary" type="button" disabled>観測する</button>
+          <button id="resetButton" class="secondary" type="button">最初から</button>
+        </div>
+        <p id="observeHint" class="hint">駒が5つ連続すると観測できるようになります。</p>
+      </section>
+
+      <details class="rules">
+        <summary>遊び方</summary>
+        <ol>
+          <li>黒と白で交互に、盤上の交点へ量子駒を置きます。</li>
+          <li>駒は表示された確率で白になり、それ以外は黒になります。</li>
+          <li>駒が5つ連続すると「観測」が解禁されます。</li>
+          <li>観測中だけ全駒の色が確定し、五目ができれば勝利です。</li>
+          <li>勝負がつかなければ観測をやめ、未確定へ戻して続行します。</li>
+        </ol>
+      </details>
+    </main>
+    <script src="game.js"></script>
+  </body>
+</html>
