@@ -117,6 +117,7 @@ h1 { margin: 0; font-size: clamp(1.8rem, 8vw, 2.7rem); letter-spacing: 0.04em; }
 
 .stone {
   --white-p: 50%;
+  position: relative;
   display: grid;
   place-items: center;
   width: 84%;
@@ -138,6 +139,47 @@ h1 { margin: 0; font-size: clamp(1.8rem, 8vw, 2.7rem); letter-spacing: 0.04em; }
 .stone.white { background: radial-gradient(circle at 35% 28%, #fff, #d8d5ce 70%); border-color: #fff; }
 .stone.black { background: radial-gradient(circle at 35% 28%, #4a4d52, #08090b 68%); border-color: #060606; }
 .stone.white::after, .stone.black::after { content: ""; }
+.cell.winning .stone {
+  outline: 2px solid #ffd463;
+  outline-offset: 2px;
+  box-shadow: 0 0 0.5rem #ffd463, 0 0.14rem 0.28rem #0009;
+}
+.cell.winning::after {
+  inset: 3%;
+  border: 2px solid #ffd463;
+  background: transparent;
+  opacity: 1;
+  box-shadow: 0 0 0.45rem #ffd463;
+}
+.stone.review::before {
+  content: attr(data-result);
+  position: absolute;
+  z-index: 2;
+  right: -22%;
+  bottom: -22%;
+  min-width: 1.45em;
+  padding: 0.08em 0.18em;
+  border: 1px solid #ddd;
+  border-radius: 0.35em;
+  background: #111e;
+  color: #fff;
+  font-size: 0.85em;
+  line-height: 1.15;
+  text-shadow: none;
+}
+.stone.review.betrayal {
+  outline-color: #ff4f64;
+  box-shadow: 0 0 0.55rem #ff304f, 0 0.14rem 0.28rem #0009;
+}
+.stone.review.betrayal::before {
+  content: "裏切り " attr(data-result);
+  right: -55%;
+  border-color: #ff7182;
+  background: #7a1020f2;
+  color: #fff;
+  font-size: 0.66em;
+  white-space: nowrap;
+}
 
 .controls { display: grid; grid-template-columns: 1fr auto; gap: 0.7rem; margin-top: 1rem; }
 .controls button { min-height: 3.2rem; border-radius: 0.8rem; border: 1px solid transparent; font-weight: 700; }
