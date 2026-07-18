@@ -74,7 +74,8 @@ h1 { margin: 0; font-size: clamp(1.8rem, 8vw, 2.7rem); letter-spacing: 0.04em; }
 .board {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(15, 1fr);
+  grid-template-columns: repeat(15, minmax(0, 1fr));
+  grid-template-rows: repeat(15, minmax(0, 1fr));
   aspect-ratio: 1;
   background:
     linear-gradient(90deg, transparent calc(50% - .5px), var(--line) calc(50% - .5px), var(--line) calc(50% + .5px), transparent calc(50% + .5px)) 0 0 / calc(100% / 15) 100%,
@@ -85,6 +86,7 @@ h1 { margin: 0; font-size: clamp(1.8rem, 8vw, 2.7rem); letter-spacing: 0.04em; }
 .cell {
   position: relative;
   min-width: 0;
+  min-height: 0;
   border: 0;
   padding: 0;
   background: transparent;
