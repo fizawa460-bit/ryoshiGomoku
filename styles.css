@@ -72,15 +72,13 @@ h1 { margin: 0; font-size: clamp(1.8rem, 8vw, 2.7rem); letter-spacing: 0.04em; }
 }
 
 .board {
-  --cell: calc((min(100vw - 2.65rem, 43.3rem) - 0.64rem) / 15);
   position: relative;
   display: grid;
   grid-template-columns: repeat(15, 1fr);
   aspect-ratio: 1;
-  padding: calc(var(--cell) / 2);
   background:
-    linear-gradient(90deg, transparent calc(50% - .5px), var(--line) calc(50% - .5px), var(--line) calc(50% + .5px), transparent calc(50% + .5px)) 0 0 / calc(100% / 14) 100%,
-    linear-gradient(transparent calc(50% - .5px), var(--line) calc(50% - .5px), var(--line) calc(50% + .5px), transparent calc(50% + .5px)) 0 0 / 100% calc(100% / 14),
+    linear-gradient(90deg, transparent calc(50% - .5px), var(--line) calc(50% - .5px), var(--line) calc(50% + .5px), transparent calc(50% + .5px)) 0 0 / calc(100% / 15) 100%,
+    linear-gradient(transparent calc(50% - .5px), var(--line) calc(50% - .5px), var(--line) calc(50% + .5px), transparent calc(50% + .5px)) 0 0 / 100% calc(100% / 15),
     linear-gradient(135deg, var(--wood-light), var(--wood));
 }
 
@@ -142,9 +140,6 @@ h1 { margin: 0; font-size: clamp(1.8rem, 8vw, 2.7rem); letter-spacing: 0.04em; }
 
 @keyframes appear { from { transform: scale(0.55); opacity: 0; } }
 
-@media (min-width: 40rem) {
-  .game-card { padding: 1.35rem; }
-  .board { --cell: calc((43.3rem - 0.64rem - 2.7rem) / 15); }
-}
+@media (min-width: 40rem) { .game-card { padding: 1.35rem; } }
 
 @media (prefers-reduced-motion: reduce) { .stone { animation: none; } }
