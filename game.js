@@ -35,6 +35,10 @@
     return cycle[state.placed[player] % cycle.length];
   }
 
+  function ownColorProbability(cell) {
+    return cell.placedBy === "white" ? cell.probabilityWhite : 100 - cell.probabilityWhite;
+  }
+
   function cellIndex(row, column) { return row * SIZE + column; }
   function isInside(row, column) { return row >= 0 && row < SIZE && column >= 0 && column < SIZE; }
 
@@ -125,7 +129,7 @@
       button.className = `cell${cell ? " occupied" : ""}`;
       button.setAttribute("role", "gridcell");
       button.setAttribute("aria-label", cell
-        ? `${row + 1}行${column + 1}列、白になる確率${cell.probabilityWhite}%`
+        ? `${row + 1}行${column + 1}列、${cell.placedBy === "black" ? "黒" : "白"}になる確率${ownColorProbability(cell)}%`
         : `${row + 1}行${column + 1}列に置く`);
       button.disabled = Boolean(cell || state.observing || state.result);
       button.addEventListener("click", () => placeStone(index));
@@ -134,7 +138,9 @@
         const stone = document.createElement("span");
         stone.className = `stone${cell.observed ? ` ${cell.observed}` : ""}`;
         stone.style.setProperty("--white-p", `${cell.probabilityWhite}%`);
-        stone.dataset.probability = cell.observed ? "" : cell.probabilityWhite;
+        stone.dataset.probability = cell.observed
+          ? ""
+          : `${cell.placedBy === "black" ? "黒" : "白"}${ownColorProbability(cell)}`;
         button.append(stone);
       }
       boardElement.append(button);
@@ -146,8 +152,10 @@
     renderBoard();
     turnText.textContent = state.result ? "対局終了" : state.observing ? "観測中" : `${state.turn === "black" ? "黒" : "白"}番`;
     nextStone.style.setProperty("--white-p", `${probability}%`);
-    nextStone.dataset.probability = probability;
-    nextProbability.textContent = `白 ${probability}%`;
+    const ownProbability = state.turn === "white" ? probability : 100 - probability;
+    const playerLabel = state.turn === "black" ? "黒" : "白";
+    nextStone.dataset.probability = `${playerLabel}${ownProbability}`;
+    nextProbability.textContent = `${playerLabel} ${ownProbability}%`;
     message.textContent = statusMessage();
 
     observeButton.disabled = !state.observeUnlocked || Boolean(state.result);
