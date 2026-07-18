@@ -9,6 +9,14 @@
   const DIRECTIONS = [[1, 0], [0, 1], [1, 1], [1, -1]];
 
   const boardElement = document.querySelector("#board");
+  const setupScreen = document.querySelector("#setupScreen");
+  const gameScreen = document.querySelector("#gameScreen");
+  const entanglementToggle = document.querySelector("#entanglementToggle");
+  const startButton = document.querySelector("#startButton");
+  const backToSetupButton = document.querySelector("#backToSetupButton");
+  const activeRules = document.querySelector("#activeRules");
+  const entanglementRules = document.querySelector("#entanglementRules");
+  const gameRules = document.querySelector("#gameRules");
   const turnText = document.querySelector("#turnText");
   const nextStone = document.querySelector("#nextStone");
   const nextProbability = document.querySelector("#nextProbability");
@@ -19,6 +27,7 @@
   const resetButton = document.querySelector("#resetButton");
 
   let state;
+  let gameOptions = { entanglementEnabled: false };
 
   function initialState() {
     return {
@@ -32,7 +41,10 @@
       reviewingResult: false,
       winningCells: new Set(),
       selectedReviewIndex: null,
-      entangleRemaining: { black: 1, white: 1 },
+      entangleRemaining: {
+        black: gameOptions.entanglementEnabled ? 1 : 0,
+        white: gameOptions.entanglementEnabled ? 1 : 0,
+      },
       entangleMode: false,
       entangleAnchor: null,
       nextEntanglementId: 1,
@@ -219,6 +231,24 @@
     render();
   }
 
+  function startGame() {
+    gameOptions = { entanglementEnabled: entanglementToggle.checked };
+    setupScreen.classList.add("hidden");
+    gameScreen.classList.remove("hidden");
+    gameRules.classList.remove("hidden");
+    entangleButton.classList.toggle("hidden", !gameOptions.entanglementEnabled);
+    entanglementRules.classList.toggle("hidden", !gameOptions.entanglementEnabled);
+    activeRules.textContent = `今回のルール：基本${gameOptions.entanglementEnabled ? "＋量子もつれ" : ""}`;
+    resetGame();
+  }
+
+  function backToSetup() {
+    gameScreen.classList.add("hidden");
+    gameRules.classList.add("hidden");
+    setupScreen.classList.remove("hidden");
+    state = initialState();
+  }
+
   function statusMessage() {
     if (state.result && state.reviewingResult) {
       const selected = state.cells[state.selectedReviewIndex];
@@ -345,5 +375,7 @@
   observeButton.addEventListener("click", observe);
   entangleButton.addEventListener("click", toggleEntangleMode);
   resetButton.addEventListener("click", resetGame);
-  resetGame();
+  startButton.addEventListener("click", startGame);
+  backToSetupButton.addEventListener("click", backToSetup);
+  state = initialState();
 })();

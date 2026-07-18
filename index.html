@@ -4,18 +4,62 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#17130f" />
-    <title>量子五目並べ v1.5</title>
-    <link rel="stylesheet" href="styles.css?v=1.5" />
+    <title>量子五目並べ v1.6</title>
+    <link rel="stylesheet" href="styles.css?v=1.6" />
   </head>
   <body>
     <main class="app">
       <header class="hero">
         <p class="eyebrow">QUANTUM GOMOKU</p>
-        <h1>量子五目並べ <span class="version">v1.5</span></h1>
+        <h1>量子五目並べ <span class="version">v1.6</span></h1>
         <p class="lead">置いた時点では、まだ白でも黒でもない。</p>
       </header>
 
-      <section class="game-card" aria-label="量子五目並べ">
+      <section id="setupScreen" class="setup-card" aria-labelledby="setupTitle">
+        <p class="label">LOCAL RULES</p>
+        <h2 id="setupTitle">今回使うルール</h2>
+
+        <div class="rule-option always-on">
+          <div>
+            <strong>基本ルール</strong>
+            <span class="rule-state">常に使用</span>
+          </div>
+          <p>黒90・黒70と白90・白70を交互に置き、観測で五目を決めます。</p>
+          <details>
+            <summary>基本ルールを詳しく見る</summary>
+            <ul>
+              <li>黒が先手で、1台のスマホを交互に操作します。</li>
+              <li>駒が5つ連続した時点から、観測を選べます。</li>
+              <li>観測は1手を使い、勝負がつかなければ相手の手番になります。</li>
+              <li>黒白双方に五目ができた場合は、観測した側の勝ちです。</li>
+            </ul>
+          </details>
+        </div>
+
+        <label class="rule-option optional-rule" for="entanglementToggle">
+          <span>
+            <strong>量子もつれ</strong>
+            <small>追加ルール</small>
+          </span>
+          <input id="entanglementToggle" type="checkbox" />
+          <span class="switch" aria-hidden="true"></span>
+          <p>2つの自分の駒を結び、同じ乱数で観測します。各自1回。</p>
+        </label>
+        <details class="option-details">
+          <summary>量子もつれを詳しく見る</summary>
+          <ol>
+            <li>自分の手番で「もつれ」を押します。</li>
+            <li>盤上にある未接続の自分の駒を1個選びます。</li>
+            <li>空いている交点へ次の駒を置くと、2駒が線で結ばれます。</li>
+            <li>2駒は観測時に同じ乱数を使うため、結果が強く連動します。</li>
+          </ol>
+        </details>
+
+        <button id="startButton" class="start-button" type="button">このルールで対局開始</button>
+      </section>
+
+      <section id="gameScreen" class="game-card hidden" aria-label="量子五目並べ">
+        <p id="activeRules" class="active-rules">今回のルール：基本</p>
         <div class="status-row">
           <div>
             <span class="label">手番</span>
@@ -42,9 +86,10 @@
           <button id="resetButton" class="secondary" type="button">最初から</button>
         </div>
         <p id="observeHint" class="hint">駒が5つ連続すると観測できるようになります。</p>
+        <button id="backToSetupButton" class="text-button" type="button">ルール選択へ戻る</button>
       </section>
 
-      <details class="rules">
+      <details id="gameRules" class="rules hidden">
         <summary>遊び方</summary>
         <ol>
           <li>黒と白で交互に、盤上の交点へ量子駒を置きます。</li>
@@ -53,17 +98,19 @@
           <li>観測中だけ全駒の色が確定し、五目ができれば勝利です。黒白双方に五目ができた場合は、観測したプレイヤーの勝ちです。</li>
           <li>観測は1手として数えます。勝負がつかなければ観測をやめ、未確定へ戻し、観測した側の手番を飛ばして相手から続行します。</li>
         </ol>
-        <h2>量子もつれの使い方</h2>
-        <ol>
-          <li>各プレイヤーは、対局中に1回だけ「もつれ」を使えます。</li>
-          <li>自分の駒を1個以上置くと、自分の手番で「もつれ」ボタンを押せます。</li>
-          <li>まず盤上にある自分の駒を1個選びます。すでにもつれている駒は選べません。</li>
-          <li>次に空いている交点を選ぶと、そこへ次の駒を置き、選んだ2駒を線で結びます。</li>
-          <li>結ばれた2駒は、観測時に同じ乱数を使います。それぞれの表示確率は変わりませんが、一緒に期待どおりになったり、一緒に裏切ったりしやすくなります。</li>
-          <li>選ぶのをやめたい時は、もう一度「もつれ」ボタンを押してください。</li>
-        </ol>
+        <div id="entanglementRules">
+          <h2>量子もつれの使い方</h2>
+          <ol>
+            <li>各プレイヤーは、対局中に1回だけ「もつれ」を使えます。</li>
+            <li>自分の駒を1個以上置くと、自分の手番で「もつれ」ボタンを押せます。</li>
+            <li>まず盤上にある自分の駒を1個選びます。すでにもつれている駒は選べません。</li>
+            <li>次に空いている交点を選ぶと、そこへ次の駒を置き、選んだ2駒を線で結びます。</li>
+            <li>結ばれた2駒は観測時に同じ乱数を使い、結果が強く連動します。</li>
+            <li>選ぶのをやめたい時は、もう一度「もつれ」ボタンを押してください。</li>
+          </ol>
+        </div>
       </details>
     </main>
-    <script src="game.js?v=1.5"></script>
+    <script src="game.js?v=1.6"></script>
   </body>
 </html>

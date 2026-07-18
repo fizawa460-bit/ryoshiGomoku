@@ -44,7 +44,7 @@ h1 { margin: 0; font-size: clamp(1.8rem, 8vw, 2.7rem); letter-spacing: 0.04em; }
 }
 .lead { margin: 0.45rem 0 0; color: var(--muted); font-size: 0.9rem; }
 
-.game-card, .rules {
+.game-card, .setup-card, .rules {
   border: 1px solid #2d3139;
   border-radius: 1.2rem;
   background: color-mix(in srgb, var(--panel) 94%, transparent);
@@ -52,6 +52,71 @@ h1 { margin: 0; font-size: clamp(1.8rem, 8vw, 2.7rem); letter-spacing: 0.04em; }
 }
 
 .game-card { padding: 1rem; }
+.setup-card { padding: 1.15rem; }
+.setup-card > h2 { margin: 0.2rem 0 1rem; font-size: 1.35rem; }
+.rule-option {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+  padding: 0.9rem;
+  border: 1px solid #3b4049;
+  border-radius: 0.9rem;
+  background: #11141a;
+}
+.rule-option > div, .rule-option > span:first-child { display: grid; gap: 0.15rem; }
+.rule-option p { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 0.82rem; line-height: 1.55; }
+.rule-option details { grid-column: 1 / -1; color: #c8c5be; font-size: 0.8rem; }
+.rule-option details ul { margin: 0.65rem 0 0; padding-left: 1.2rem; line-height: 1.65; }
+.rule-state, .rule-option small { color: var(--accent); font-size: 0.7rem; }
+.optional-rule { cursor: pointer; }
+.optional-rule input { position: absolute; opacity: 0; pointer-events: none; }
+.switch {
+  position: relative;
+  width: 3rem;
+  height: 1.7rem;
+  border-radius: 999px;
+  background: #3a3e46;
+  transition: background 150ms ease;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 0.2rem;
+  left: 0.2rem;
+  width: 1.3rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #ddd;
+  transition: transform 150ms ease;
+}
+.optional-rule input:checked + .switch { background: #7657bb; }
+.optional-rule input:checked + .switch::after { transform: translateX(1.3rem); background: #fff; }
+.optional-rule:has(input:focus-visible) { outline: 2px solid #a78bfa; outline-offset: 2px; }
+.option-details { margin: 0.5rem 0 0; padding: 0 0.9rem; color: var(--muted); font-size: 0.82rem; }
+.option-details ol { padding-left: 1.25rem; line-height: 1.65; }
+.start-button {
+  width: 100%;
+  min-height: 3.5rem;
+  margin-top: 1.2rem;
+  border: 0;
+  border-radius: 0.85rem;
+  background: var(--accent);
+  color: #211709;
+  font-weight: 800;
+}
+.active-rules { margin: 0 0 0.65rem; color: #b8a6e7; font-size: 0.75rem; }
+.text-button {
+  display: block;
+  margin: 0.8rem auto 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-decoration: underline;
+}
+.hidden { display: none !important; }
 .status-row { display: flex; align-items: center; justify-content: space-between; min-height: 3.2rem; }
 .status-row > div { display: grid; gap: 0.1rem; }
 .label { color: var(--muted); font-size: 0.7rem; }
@@ -193,6 +258,7 @@ h1 { margin: 0; font-size: clamp(1.8rem, 8vw, 2.7rem); letter-spacing: 0.04em; }
 }
 
 .controls { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 0.55rem; margin-top: 1rem; }
+.controls:has(.entangle.hidden) { grid-template-columns: minmax(0, 1fr) auto; }
 .controls button { min-height: 3.2rem; border-radius: 0.8rem; border: 1px solid transparent; font-weight: 700; }
 .primary { background: var(--accent); color: #211709; }
 .primary:disabled { background: #30343b; color: #777b82; }
