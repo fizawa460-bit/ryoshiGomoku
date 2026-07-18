@@ -94,6 +94,7 @@ h1 { margin: 0; font-size: clamp(1.8rem, 8vw, 2.7rem); letter-spacing: 0.04em; }
 
 .cell {
   position: relative;
+  z-index: 2;
   display: grid;
   place-items: center;
   min-width: 0;
@@ -168,17 +169,48 @@ h1 { margin: 0; font-size: clamp(1.8rem, 8vw, 2.7rem); letter-spacing: 0.04em; }
   box-shadow: 0 0 0.3rem #ff304f;
 }
 .cell.selected .stone { outline: 2px solid #7fd7ff; outline-offset: 3px; }
+.cell.entangle-anchor .stone {
+  outline: 2px solid #a78bfa;
+  outline-offset: 3px;
+  box-shadow: 0 0 0.7rem #8b5cf6, 0 0.14rem 0.28rem #0009;
+}
 
-.controls { display: grid; grid-template-columns: 1fr auto; gap: 0.7rem; margin-top: 1rem; }
+.entanglement-layer {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.entanglement-layer line {
+  stroke: #8b5cf6;
+  stroke-width: 0.65;
+  stroke-linecap: round;
+  stroke-dasharray: 1.3 1.1;
+  filter: drop-shadow(0 0 1px #c4b5fd);
+}
+
+.controls { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 0.55rem; margin-top: 1rem; }
 .controls button { min-height: 3.2rem; border-radius: 0.8rem; border: 1px solid transparent; font-weight: 700; }
 .primary { background: var(--accent); color: #211709; }
 .primary:disabled { background: #30343b; color: #777b82; }
 .primary:not(:disabled):active { transform: translateY(1px); }
 .secondary { padding: 0 1rem; background: transparent; border-color: #474b54 !important; color: #d9d6cf; }
+.entangle {
+  padding: 0 0.8rem;
+  border-color: #6d5a9a !important;
+  background: #272038;
+  color: #d9ccff;
+}
+.entangle.active { background: #7657bb; color: #fff; }
+.entangle:disabled { border-color: #3c3e45 !important; background: #292c32; color: #686c74; }
 .hint { margin: 0.7rem 0 0; color: var(--muted); text-align: center; font-size: 0.75rem; }
 
 .rules { margin-top: 1rem; padding: 0.95rem 1rem; color: #d8d5cf; }
 .rules summary { cursor: pointer; font-weight: 700; }
+.rules h2 { margin: 1.2rem 0 0; color: #e9b95f; font-size: 1rem; }
 .rules ol { margin: 0.9rem 0 0; padding-left: 1.35rem; color: var(--muted); font-size: 0.86rem; line-height: 1.75; }
 
 @keyframes appear { from { transform: scale(0.55); opacity: 0; } }
