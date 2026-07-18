@@ -27,6 +27,8 @@
       observeUnlocked: false,
       observing: false,
       result: null,
+      reviewingResult: false,
+      winningCells: new Set(),
     };
   }
 
@@ -58,7 +60,29 @@
   }
 
   function hasFive(color) {
-    return hasLine((cell) => cell?.observed === color);
+    return findWinningCells(color).size > 0;
+  }
+
+  function findWinningCells(color) {
+    const winning = new Set();
+    for (let row = 0; row < SIZE; row += 1) {
+      for (let column = 0; column < SIZE; column += 1) {
+        if (state.cells[cellIndex(row, column)]?.observed !== color) continue;
+        for (const [rowStep, columnStep] of DIRECTIONS) {
+          const line = [];
+          let nextRow = row;
+          let nextColumn = column;
+          while (isInside(nextRow, nextColumn)
+            && state.cells[cellIndex(nextRow, nextColumn)]?.observed === color) {
+            line.push(cellIndex(nextRow, nextColumn));
+            nextRow += rowStep;
+            nextColumn += columnStep;
+          }
+          if (line.length >= 5) line.forEach((index) => winning.add(index));
+        }
+      }
+    }
+    return winning;
   }
 
   function hasLine(matches) {
@@ -81,7 +105,12 @@
   }
 
   function observe() {
-    if (!state.observeUnlocked || state.result) return;
+    if (state.result) {
+      state.reviewingResult = !state.reviewingResult;
+      render();
+      return;
+    }
+    if (!state.observeUnlocked) return;
     if (state.observing) {
       stopObserving();
       return;
@@ -94,6 +123,10 @@
 
     const whiteWins = hasFive("white");
     const blackWins = hasFive("black");
+    state.winningCells = new Set([
+      ...findWinningCells("white"),
+      ...findWinningCells("black"),
+    ]);
     if (whiteWins && blackWins) state.result = "draw";
     else if (whiteWins) state.result = "white";
     else if (blackWins) state.result = "black";
@@ -113,6 +146,10 @@
   }
 
   function statusMessage() {
+    if (state.result && state.reviewingResult) {
+      const betrayals = state.cells.filter((cell) => cell && cell.observed !== cell.placedBy).length;
+      return `元の割合を確認中。裏切った駒は${betrayals}個です。`;
+    }
     if (state.result === "draw") return "白と黒が同時に五目を完成。引き分けです。";
     if (state.result) return `${state.result === "black" ? "黒" : "白"}の五目が完成しました。`;
     if (state.observing) return "観測中です。勝負はまだ確定していません。";
@@ -126,7 +163,7 @@
       const column = index % SIZE;
       const button = document.createElement("button");
       button.type = "button";
-      button.className = `cell${cell ? " occupied" : ""}`;
+      button.className = `cell${cell ? " occupied" : ""}${state.winningCells.has(index) ? " winning" : ""}`;
       button.setAttribute("role", "gridcell");
       button.setAttribute("aria-label", cell
         ? `${row + 1}行${column + 1}列、${cell.placedBy === "black" ? "黒" : "白"}になる確率${ownColorProbability(cell)}%`
@@ -136,11 +173,14 @@
 
       if (cell) {
         const stone = document.createElement("span");
-        stone.className = `stone${cell.observed ? ` ${cell.observed}` : ""}`;
+        const isBetrayal = cell.observed && cell.observed !== cell.placedBy;
+        const showObservedColor = cell.observed && !state.reviewingResult;
+        stone.className = `stone${showObservedColor ? ` ${cell.observed}` : ""}${state.reviewingResult ? " review" : ""}${isBetrayal && state.reviewingResult ? " betrayal" : ""}`;
         stone.style.setProperty("--white-p", `${cell.probabilityWhite}%`);
-        stone.dataset.probability = cell.observed
+        stone.dataset.probability = showObservedColor
           ? ""
           : `${cell.placedBy === "black" ? "黒" : "白"}${ownColorProbability(cell)}`;
+        stone.dataset.result = state.reviewingResult ? `→${cell.observed === "black" ? "黒" : "白"}` : "";
         button.append(stone);
       }
       boardElement.append(button);
@@ -158,10 +198,14 @@
     nextProbability.textContent = `${playerLabel} ${ownProbability}%`;
     message.textContent = statusMessage();
 
-    observeButton.disabled = !state.observeUnlocked || Boolean(state.result);
-    observeButton.textContent = state.observing ? "観測をやめる" : "観測する";
+    observeButton.disabled = !state.observeUnlocked;
+    observeButton.textContent = state.result
+      ? state.reviewingResult ? "結果に戻る" : "確率を確認"
+      : state.observing ? "観測をやめる" : "観測する";
     observeHint.textContent = state.result
-      ? "「最初から」で新しい対局を始められます。"
+      ? state.reviewingResult
+        ? "赤い駒は、置いた側とは逆の色になった裏切り駒です。"
+        : "金色に光る駒が勝負を決めた五目です。"
       : state.observeUnlocked
         ? state.observing ? "観測をやめるまで次の駒は置けません。" : "観測は以降いつでも行えます。"
         : "駒が5つ連続すると観測できるようになります。";
