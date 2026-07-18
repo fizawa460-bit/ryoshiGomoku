@@ -29,6 +29,7 @@
       result: null,
       reviewingResult: false,
       winningCells: new Set(),
+      selectedReviewIndex: null,
     };
   }
 
@@ -52,6 +53,12 @@
     state.placed[player] += 1;
     state.observeUnlocked ||= hasPotentialFive();
     state.turn = player === "black" ? "white" : "black";
+    render();
+  }
+
+  function selectReviewStone(index) {
+    if (!state.reviewingResult || !state.cells[index]) return;
+    state.selectedReviewIndex = index;
     render();
   }
 
@@ -107,6 +114,7 @@
   function observe() {
     if (state.result) {
       state.reviewingResult = !state.reviewingResult;
+      state.selectedReviewIndex = null;
       render();
       return;
     }
@@ -147,8 +155,16 @@
 
   function statusMessage() {
     if (state.result && state.reviewingResult) {
+      const selected = state.cells[state.selectedReviewIndex];
+      if (selected) {
+        const placedColor = selected.placedBy === "black" ? "黒" : "白";
+        const observedColor = selected.observed === "black" ? "黒" : "白";
+        const betrayal = selected.observed !== selected.placedBy ? "（裏切り）" : "";
+        const winning = state.winningCells.has(state.selectedReviewIndex) ? "・勝負を決めた駒" : "";
+        return `${placedColor}${ownColorProbability(selected)}% → ${observedColor}${betrayal}${winning}`;
+      }
       const betrayals = state.cells.filter((cell) => cell && cell.observed !== cell.placedBy).length;
-      return `元の割合を確認中。裏切った駒は${betrayals}個です。`;
+      return `裏切り ${betrayals}個。気になる駒をタップすると詳細を確認できます。`;
     }
     if (state.result === "draw") return "白と黒が同時に五目を完成。引き分けです。";
     if (state.result) return `${state.result === "black" ? "黒" : "白"}の五目が完成しました。`;
@@ -163,13 +179,15 @@
       const column = index % SIZE;
       const button = document.createElement("button");
       button.type = "button";
-      button.className = `cell${cell ? " occupied" : ""}${state.winningCells.has(index) ? " winning" : ""}`;
+      button.className = `cell${cell ? " occupied" : ""}${state.winningCells.has(index) ? " winning" : ""}${state.selectedReviewIndex === index ? " selected" : ""}`;
       button.setAttribute("role", "gridcell");
       button.setAttribute("aria-label", cell
         ? `${row + 1}行${column + 1}列、${cell.placedBy === "black" ? "黒" : "白"}になる確率${ownColorProbability(cell)}%`
         : `${row + 1}行${column + 1}列に置く`);
-      button.disabled = Boolean(cell || state.observing || state.result);
-      button.addEventListener("click", () => placeStone(index));
+      button.disabled = state.reviewingResult
+        ? !cell
+        : Boolean(cell || state.observing || state.result);
+      button.addEventListener("click", () => state.reviewingResult ? selectReviewStone(index) : placeStone(index));
 
       if (cell) {
         const stone = document.createElement("span");
@@ -179,8 +197,9 @@
         stone.style.setProperty("--white-p", `${cell.probabilityWhite}%`);
         stone.dataset.probability = showObservedColor
           ? ""
-          : `${cell.placedBy === "black" ? "黒" : "白"}${ownColorProbability(cell)}`;
-        stone.dataset.result = state.reviewingResult ? `→${cell.observed === "black" ? "黒" : "白"}` : "";
+          : state.reviewingResult
+            ? ownColorProbability(cell)
+            : `${cell.placedBy === "black" ? "黒" : "白"}${ownColorProbability(cell)}`;
         button.append(stone);
       }
       boardElement.append(button);
@@ -204,7 +223,7 @@
       : state.observing ? "観測をやめる" : "観測する";
     observeHint.textContent = state.result
       ? state.reviewingResult
-        ? "赤い駒は、置いた側とは逆の色になった裏切り駒です。"
+        ? "赤い輪＝裏切り、金の輪＝勝負を決めた駒。タップで詳細。"
         : "金色に光る駒が勝負を決めた五目です。"
       : state.observeUnlocked
         ? state.observing ? "観測をやめるまで次の駒は置けません。" : "観測は以降いつでも行えます。"
