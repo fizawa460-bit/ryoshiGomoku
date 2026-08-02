@@ -4,14 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#17130f" />
-    <title>量子五目並べ v2.0</title>
+    <title>量子五目並べ v2.1</title>
     <link rel="stylesheet" href="styles.css?v=2.0" />
   </head>
   <body>
     <main class="app">
       <header class="hero">
         <p class="eyebrow">QUANTUM GOMOKU</p>
-        <h1>量子五目並べ <span class="version">v2.0</span></h1>
+        <h1>量子五目並べ <span class="version">v2.1</span></h1>
         <p class="lead">置いた時点では、まだ白でも黒でもない。</p>
       </header>
 
@@ -85,7 +85,7 @@
             <li>自分の手番で「重ね合わせ」を押し、盤上の自分または相手の駒を選びます。</li>
             <li>次の自分の駒を同じ交点へ重ねます。1手と1駒を消費し、盤上の交点数は増えません。</li>
             <li>重ねた駒の白黒確率は、すべての駒の平均になります。例：白90%＋黒90%なら白50%・黒50%です。</li>
-            <li>同じ交点へ何度でも重ねられます。重ねるほど各駒の比重は均等に小さくなります。</li>
+            <li>重ね合わせは各交点につき1回だけです。重ね合わせ済みの交点へ、さらに駒を重ねることはできません。</li>
             <li>重ね合わせた駒は、量子もつれの対象にはできません。</li>
           </ol>
         </details>
@@ -154,7 +154,7 @@
             <li>自分の手番で「重ね合わせ」を押し、盤上の自分または相手の駒を選びます。</li>
             <li>次の駒を同じ交点へ投入するため、通常配置と同じく1手と1駒を消費します。</li>
             <li>合成後の白確率は、重なった全駒の白確率の平均です。白90%＋黒90%（白10%）なら白50%・黒50%になります。</li>
-            <li>同じ交点へ繰り返し重ねられますが、盤上の駒数は増えません。</li>
+            <li>重ね合わせは各交点につき1回だけで、最大2枚です。重ね合わせ済みの交点は次の対象にできません。</li>
             <li>取り消す時は、駒を選ぶ前にもう一度「重ね合わせ」を押してください。</li>
           </ol>
         </div>
