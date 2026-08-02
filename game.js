@@ -286,7 +286,7 @@
 
   function handleSuperposeSelection(index) {
     const cell = state.cells[index];
-    if (!cell || cell.entanglementId) return;
+    if (!cell || cell.entanglementId || (cell.layers?.length || 1) > 1) return;
     const player = state.turn;
     const incomingProbability = probabilityFor(player);
     const layers = cell.layers?.length
@@ -561,7 +561,10 @@
       ? "もつれ済み"
       : state.entangleMode ? "もつれ取消" : "もつれ 1";
 
-    superposeButton.disabled = Boolean(state.observing || state.result || !canAct() || !state.cells.some((cell) => cell && !cell.entanglementId));
+    const hasEligibleSuperpositionTarget = state.cells.some(
+      (cell) => cell && !cell.entanglementId && (cell.layers?.length || 1) === 1
+    );
+    superposeButton.disabled = Boolean(state.observing || state.result || !canAct() || !hasEligibleSuperpositionTarget);
     superposeButton.classList.toggle("active", state.superposeMode);
     superposeButton.textContent = state.superposeMode ? "重ね合わせ取消" : "重ね合わせ";
 
