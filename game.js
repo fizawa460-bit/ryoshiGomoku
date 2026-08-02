@@ -12,10 +12,12 @@
   const setupScreen = document.querySelector("#setupScreen");
   const gameScreen = document.querySelector("#gameScreen");
   const entanglementToggle = document.querySelector("#entanglementToggle");
+  const superpositionToggle = document.querySelector("#superpositionToggle");
   const startButton = document.querySelector("#startButton");
   const backToSetupButton = document.querySelector("#backToSetupButton");
   const activeRules = document.querySelector("#activeRules");
   const entanglementRules = document.querySelector("#entanglementRules");
+  const superpositionRules = document.querySelector("#superpositionRules");
   const gameRules = document.querySelector("#gameRules");
   const turnText = document.querySelector("#turnText");
   const nextStone = document.querySelector("#nextStone");
@@ -23,6 +25,7 @@
   const message = document.querySelector("#message");
   const observeButton = document.querySelector("#observeButton");
   const entangleButton = document.querySelector("#entangleButton");
+  const superposeButton = document.querySelector("#superposeButton");
   const observeHint = document.querySelector("#observeHint");
   const resetButton = document.querySelector("#resetButton");
   const localModeButton = document.querySelector("#localModeButton");
@@ -35,7 +38,7 @@
   const connectionBar = document.querySelector("#connectionBar");
 
   let state;
-  let gameOptions = { entanglementEnabled: false };
+  let gameOptions = { entanglementEnabled: false, superpositionEnabled: false };
   let playMode = "local";
   let peer = null;
   let connection = null;
@@ -81,6 +84,7 @@
     applyingRemote = true;
     if (action === "place") placeStone(payload.index);
     else if (action === "entangle") toggleEntangleMode();
+    else if (action === "superpose") toggleSuperposeMode();
     else if (action === "observe") observe();
     applyingRemote = false;
     sendState();
@@ -99,7 +103,9 @@
           connectionBar.textContent = `白で参加中・合言葉 ${roomCode}`;
           entangleButton.classList.toggle("hidden", !gameOptions.entanglementEnabled);
           entanglementRules.classList.toggle("hidden", !gameOptions.entanglementEnabled);
-          activeRules.textContent = `今回のルール：基本${gameOptions.entanglementEnabled ? "＋量子もつれ" : ""}`;
+          superposeButton.classList.toggle("hidden", !gameOptions.superpositionEnabled);
+          superpositionRules.classList.toggle("hidden", !gameOptions.superpositionEnabled);
+          activeRules.textContent = `今回のルール：基本${gameOptions.entanglementEnabled ? "＋量子もつれ" : ""}${gameOptions.superpositionEnabled ? "＋重ね合わせ" : ""}`;
         }
         loadState(data.state);
       } else if (data.type === "action") runRemoteAction(data.action, data.payload || {});
@@ -178,6 +184,7 @@
       entangleMode: false,
       entangleAnchor: null,
       nextEntanglementId: 1,
+      superposeMode: false,
     };
   }
 
@@ -202,6 +209,10 @@
       handleEntangleSelection(index);
       return;
     }
+    if (state.superposeMode) {
+      handleSuperposeSelection(index);
+      return;
+    }
     if (state.cells[index]) return;
 
     const player = state.turn;
@@ -210,6 +221,7 @@
       placedBy: player,
       observed: null,
       entanglementId: null,
+      layers: [{ placedBy: player, probabilityWhite: probabilityFor(player) }],
     };
     state.placed[player] += 1;
     state.observeUnlocked ||= hasPotentialFive();
@@ -225,6 +237,7 @@
     if (state.observing || state.result || state.entangleRemaining[player] === 0) return;
     if (!state.cells.some((cell) => cell?.placedBy === player && !cell.entanglementId)) return;
     state.entangleMode = !state.entangleMode;
+    state.superposeMode = false;
     state.entangleAnchor = null;
     render();
     afterAction();
@@ -248,11 +261,44 @@
       placedBy: player,
       observed: null,
       entanglementId,
+      layers: [{ placedBy: player, probabilityWhite: probabilityFor(player) }],
     };
     state.placed[player] += 1;
     state.entangleRemaining[player] = 0;
     state.entangleMode = false;
     state.entangleAnchor = null;
+    state.observeUnlocked ||= hasPotentialFive();
+    state.turn = player === "black" ? "white" : "black";
+    render();
+    afterAction();
+  }
+
+  function toggleSuperposeMode() {
+    if (requestAction("superpose")) return;
+    if (!canAct()) return;
+    if (state.observing || state.result || !gameOptions.superpositionEnabled) return;
+    state.superposeMode = !state.superposeMode;
+    state.entangleMode = false;
+    state.entangleAnchor = null;
+    render();
+    afterAction();
+  }
+
+  function handleSuperposeSelection(index) {
+    const cell = state.cells[index];
+    if (!cell || cell.entanglementId) return;
+    const player = state.turn;
+    const incomingProbability = probabilityFor(player);
+    const layers = cell.layers?.length
+      ? [...cell.layers]
+      : [{ placedBy: cell.placedBy, probabilityWhite: cell.probabilityWhite }];
+    layers.push({ placedBy: player, probabilityWhite: incomingProbability });
+    cell.layers = layers;
+    cell.probabilityWhite = layers.reduce((sum, layer) => sum + layer.probabilityWhite, 0) / layers.length;
+    cell.placedBy = layers[0].placedBy;
+    cell.observed = null;
+    state.placed[player] += 1;
+    state.superposeMode = false;
     state.observeUnlocked ||= hasPotentialFive();
     state.turn = player === "black" ? "white" : "black";
     render();
@@ -375,13 +421,15 @@
   }
 
   function startGame() {
-    gameOptions = { entanglementEnabled: entanglementToggle.checked };
+    gameOptions = { entanglementEnabled: entanglementToggle.checked, superpositionEnabled: superpositionToggle.checked };
     setupScreen.classList.add("hidden");
     gameScreen.classList.remove("hidden");
     gameRules.classList.remove("hidden");
     entangleButton.classList.toggle("hidden", !gameOptions.entanglementEnabled);
     entanglementRules.classList.toggle("hidden", !gameOptions.entanglementEnabled);
-    activeRules.textContent = `今回のルール：基本${gameOptions.entanglementEnabled ? "＋量子もつれ" : ""}`;
+    superposeButton.classList.toggle("hidden", !gameOptions.superpositionEnabled);
+    superpositionRules.classList.toggle("hidden", !gameOptions.superpositionEnabled);
+    activeRules.textContent = `今回のルール：基本${gameOptions.entanglementEnabled ? "＋量子もつれ" : ""}${gameOptions.superpositionEnabled ? "＋重ね合わせ" : ""}`;
     connectionBar.classList.toggle("hidden", playMode !== "online");
     if (playMode === "online") connectionBar.textContent = `${onlineRole === "black" ? "黒" : "白"}で参加中・合言葉 ${roomCode}`;
     resetGame();
@@ -416,6 +464,7 @@
     if (state.observing) return `観測中です。勝負がつかなければ次は${state.turn === "black" ? "黒" : "白"}番です。`;
     if (state.entangleMode && state.entangleAnchor === null) return "もつれさせる自分の駒を1個選んでください。";
     if (state.entangleMode) return "次に空いている交点を選ぶと、次の駒ともつれます。";
+    if (state.superposeMode) return "重ねる駒を選んでください。次の駒と1手を消費します。";
     return `${state.turn === "black" ? "黒" : "白"}番です。交点を選んでください。`;
   }
 
@@ -426,16 +475,20 @@
       const column = index % SIZE;
       const button = document.createElement("button");
       button.type = "button";
-      button.className = `cell${cell ? " occupied" : ""}${state.winningCells.has(index) ? " winning" : ""}${state.selectedReviewIndex === index ? " selected" : ""}${state.entangleAnchor === index ? " entangle-anchor" : ""}`;
+      button.className = `cell${cell ? " occupied" : ""}${cell?.layers?.length > 1 ? " superposed" : ""}${state.winningCells.has(index) ? " winning" : ""}${state.selectedReviewIndex === index ? " selected" : ""}${state.entangleAnchor === index ? " entangle-anchor" : ""}`;
       button.setAttribute("role", "gridcell");
       button.setAttribute("aria-label", cell
-        ? `${row + 1}行${column + 1}列、${cell.placedBy === "black" ? "黒" : "白"}になる確率${ownColorProbability(cell)}%`
+        ? cell.layers?.length > 1
+          ? `${row + 1}行${column + 1}列、${cell.layers.length}枚重ね、白${Math.round(cell.probabilityWhite)}%、黒${Math.round(100 - cell.probabilityWhite)}%`
+          : `${row + 1}行${column + 1}列、${cell.placedBy === "black" ? "黒" : "白"}になる確率${ownColorProbability(cell)}%`
         : `${row + 1}行${column + 1}列に置く`);
       button.disabled = state.reviewingResult
         ? !cell
         : state.entangleMode
-          ? Boolean(!canAct() || state.observing || state.result || (cell && (cell.placedBy !== state.turn || cell.entanglementId)))
-          : Boolean(!canAct() || cell || state.observing || state.result);
+          ? Boolean(!canAct() || state.observing || state.result || (cell && (cell.placedBy !== state.turn || cell.entanglementId || cell.layers?.length > 1)))
+          : state.superposeMode
+            ? Boolean(!canAct() || state.observing || state.result || !cell || cell.entanglementId)
+            : Boolean(!canAct() || cell || state.observing || state.result);
       button.addEventListener("click", () => state.reviewingResult ? selectReviewStone(index) : placeStone(index));
 
       if (cell) {
@@ -446,9 +499,11 @@
         stone.style.setProperty("--white-p", `${cell.probabilityWhite}%`);
         stone.dataset.probability = showObservedColor
           ? ""
-          : state.reviewingResult
-            ? ownColorProbability(cell)
-            : `${cell.placedBy === "black" ? "黒" : "白"}${ownColorProbability(cell)}`;
+          : cell.layers?.length > 1
+            ? `白${Math.round(cell.probabilityWhite)}`
+            : state.reviewingResult
+              ? ownColorProbability(cell)
+              : `${cell.placedBy === "black" ? "黒" : "白"}${ownColorProbability(cell)}`;
         button.append(stone);
       }
       boardElement.append(button);
@@ -506,7 +561,11 @@
       ? "もつれ済み"
       : state.entangleMode ? "もつれ取消" : "もつれ 1";
 
-    observeButton.disabled = !state.observeUnlocked || state.entangleMode || (!state.result && !canAct());
+    superposeButton.disabled = Boolean(state.observing || state.result || !canAct() || !state.cells.some((cell) => cell && !cell.entanglementId));
+    superposeButton.classList.toggle("active", state.superposeMode);
+    superposeButton.textContent = state.superposeMode ? "重ね合わせ取消" : "重ね合わせ";
+
+    observeButton.disabled = !state.observeUnlocked || state.entangleMode || state.superposeMode || (!state.result && !canAct());
     observeButton.textContent = state.result
       ? state.reviewingResult ? "結果に戻る" : "確率を確認"
       : state.observing ? "観測をやめる" : "観測する";
@@ -531,6 +590,7 @@
 
   observeButton.addEventListener("click", observe);
   entangleButton.addEventListener("click", toggleEntangleMode);
+  superposeButton.addEventListener("click", toggleSuperposeMode);
   resetButton.addEventListener("click", resetGame);
   startButton.addEventListener("click", startGame);
   backToSetupButton.addEventListener("click", backToSetup);
