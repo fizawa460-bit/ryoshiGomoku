@@ -25,9 +25,139 @@
   const entangleButton = document.querySelector("#entangleButton");
   const observeHint = document.querySelector("#observeHint");
   const resetButton = document.querySelector("#resetButton");
+  const localModeButton = document.querySelector("#localModeButton");
+  const onlineModeButton = document.querySelector("#onlineModeButton");
+  const onlinePanel = document.querySelector("#onlinePanel");
+  const createRoomButton = document.querySelector("#createRoomButton");
+  const joinRoomButton = document.querySelector("#joinRoomButton");
+  const roomCodeInput = document.querySelector("#roomCodeInput");
+  const onlineStatus = document.querySelector("#onlineStatus");
+  const connectionBar = document.querySelector("#connectionBar");
 
   let state;
   let gameOptions = { entanglementEnabled: false };
+  let playMode = "local";
+  let peer = null;
+  let connection = null;
+  let onlineRole = null;
+  let roomCode = null;
+  let applyingRemote = false;
+
+  const peerIdFor = (code) => `quantum-gomoku-${code.toLowerCase()}`;
+  const makeRoomCode = () => Math.random().toString(36).slice(2, 8).toUpperCase();
+
+  function serializableState() {
+    return { ...state, winningCells: [...state.winningCells] };
+  }
+
+  function loadState(nextState) {
+    state = { ...nextState, winningCells: new Set(nextState.winningCells || []) };
+    render();
+  }
+
+  function sendState() {
+    if (onlineRole === "black" && connection?.open) {
+      connection.send({ type: "state", state: serializableState(), gameOptions });
+    }
+  }
+
+  function afterAction() {
+    if (!applyingRemote) sendState();
+  }
+
+  function canAct() {
+    return applyingRemote || playMode === "local" || (connection?.open && state.turn === onlineRole);
+  }
+
+  function requestAction(action, payload = {}) {
+    if (playMode === "local" || onlineRole === "black") return false;
+    if (!canAct()) return true;
+    connection.send({ type: "action", action, payload });
+    return true;
+  }
+
+  function runRemoteAction(action, payload) {
+    if (onlineRole !== "black" || state.turn !== "white") return;
+    applyingRemote = true;
+    if (action === "place") placeStone(payload.index);
+    else if (action === "entangle") toggleEntangleMode();
+    else if (action === "observe") observe();
+    applyingRemote = false;
+    sendState();
+  }
+
+  function attachConnection(conn) {
+    connection = conn;
+    conn.on("data", (data) => {
+      if (data.type === "state" && onlineRole === "white") {
+        gameOptions = data.gameOptions;
+        if (gameScreen.classList.contains("hidden")) {
+          setupScreen.classList.add("hidden");
+          gameScreen.classList.remove("hidden");
+          gameRules.classList.remove("hidden");
+          connectionBar.classList.remove("hidden");
+          connectionBar.textContent = `白で参加中・合言葉 ${roomCode}`;
+          entangleButton.classList.toggle("hidden", !gameOptions.entanglementEnabled);
+          entanglementRules.classList.toggle("hidden", !gameOptions.entanglementEnabled);
+          activeRules.textContent = `今回のルール：基本${gameOptions.entanglementEnabled ? "＋量子もつれ" : ""}`;
+        }
+        loadState(data.state);
+      } else if (data.type === "action") runRemoteAction(data.action, data.payload || {});
+    });
+    conn.on("close", () => {
+      connectionBar.textContent = "相手との接続が切れました。ルール選択へ戻って再接続してください。";
+      connectionBar.classList.remove("hidden");
+      render();
+    });
+  }
+
+  function setOnlineStatus(text) { onlineStatus.textContent = text; }
+
+  function createRoom() {
+    if (!window.Peer) return setOnlineStatus("通信ライブラリを読み込めませんでした。再読み込みしてください。");
+    closeOnline();
+    playMode = "online";
+    onlineRole = "black";
+    roomCode = makeRoomCode();
+    setOnlineStatus("部屋を準備しています…");
+    peer = new Peer(peerIdFor(roomCode));
+    peer.on("open", () => setOnlineStatus(`合言葉：${roomCode}　相手に伝えてください。`));
+    peer.on("connection", (conn) => {
+      if (connection?.open) return conn.close();
+      attachConnection(conn);
+      conn.on("open", () => {
+        setOnlineStatus(`接続しました。合言葉：${roomCode}`);
+        startGame();
+        sendState();
+      });
+    });
+    peer.on("error", () => setOnlineStatus("部屋を作れませんでした。もう一度お試しください。"));
+  }
+
+  function joinRoom() {
+    const code = roomCodeInput.value.trim().toUpperCase();
+    if (!/^[A-Z0-9]{6}$/.test(code)) return setOnlineStatus("6桁の合言葉を入力してください。");
+    if (!window.Peer) return setOnlineStatus("通信ライブラリを読み込めませんでした。再読み込みしてください。");
+    closeOnline();
+    playMode = "online";
+    onlineRole = "white";
+    roomCode = code;
+    setOnlineStatus("接続しています…");
+    peer = new Peer();
+    peer.on("open", () => {
+      const conn = peer.connect(peerIdFor(code), { reliable: true });
+      attachConnection(conn);
+      conn.on("open", () => setOnlineStatus("接続しました。黒側の開始を待っています…"));
+    });
+    peer.on("error", () => setOnlineStatus("接続できませんでした。合言葉を確認してください。"));
+  }
+
+  function closeOnline() {
+    connection?.close();
+    peer?.destroy();
+    connection = null;
+    peer = null;
+  }
 
   function initialState() {
     return {
@@ -64,6 +194,8 @@
   function isInside(row, column) { return row >= 0 && row < SIZE && column >= 0 && column < SIZE; }
 
   function placeStone(index) {
+    if (requestAction("place", { index })) return;
+    if (!canAct()) return;
     if (state.observing || state.result) return;
 
     if (state.entangleMode) {
@@ -83,15 +215,19 @@
     state.observeUnlocked ||= hasPotentialFive();
     state.turn = player === "black" ? "white" : "black";
     render();
+    afterAction();
   }
 
   function toggleEntangleMode() {
+    if (requestAction("entangle")) return;
+    if (!canAct()) return;
     const player = state.turn;
     if (state.observing || state.result || state.entangleRemaining[player] === 0) return;
     if (!state.cells.some((cell) => cell?.placedBy === player && !cell.entanglementId)) return;
     state.entangleMode = !state.entangleMode;
     state.entangleAnchor = null;
     render();
+    afterAction();
   }
 
   function handleEntangleSelection(index) {
@@ -120,6 +256,7 @@
     state.observeUnlocked ||= hasPotentialFive();
     state.turn = player === "black" ? "white" : "black";
     render();
+    afterAction();
   }
 
   function selectReviewStone(index) {
@@ -178,6 +315,8 @@
   }
 
   function observe() {
+    if (requestAction("observe")) return;
+    if (!canAct()) return;
     if (state.result) {
       state.reviewingResult = !state.reviewingResult;
       state.selectedReviewIndex = null;
@@ -217,6 +356,7 @@
     else if (blackWins) state.result = "black";
     if (!state.result) state.turn = observer === "black" ? "white" : "black";
     render();
+    afterAction();
   }
 
   function stopObserving() {
@@ -224,11 +364,14 @@
     state.observing = false;
     state.cells.forEach((cell) => { if (cell) cell.observed = null; });
     render();
+    afterAction();
   }
 
   function resetGame() {
+    if (playMode === "online" && onlineRole !== "black") return;
     state = initialState();
     render();
+    afterAction();
   }
 
   function startGame() {
@@ -239,6 +382,8 @@
     entangleButton.classList.toggle("hidden", !gameOptions.entanglementEnabled);
     entanglementRules.classList.toggle("hidden", !gameOptions.entanglementEnabled);
     activeRules.textContent = `今回のルール：基本${gameOptions.entanglementEnabled ? "＋量子もつれ" : ""}`;
+    connectionBar.classList.toggle("hidden", playMode !== "online");
+    if (playMode === "online") connectionBar.textContent = `${onlineRole === "black" ? "黒" : "白"}で参加中・合言葉 ${roomCode}`;
     resetGame();
   }
 
@@ -247,6 +392,7 @@
     gameRules.classList.add("hidden");
     setupScreen.classList.remove("hidden");
     state = initialState();
+    closeOnline();
   }
 
   function statusMessage() {
@@ -288,8 +434,8 @@
       button.disabled = state.reviewingResult
         ? !cell
         : state.entangleMode
-          ? Boolean(state.observing || state.result || (cell && (cell.placedBy !== state.turn || cell.entanglementId)))
-          : Boolean(cell || state.observing || state.result);
+          ? Boolean(!canAct() || state.observing || state.result || (cell && (cell.placedBy !== state.turn || cell.entanglementId)))
+          : Boolean(!canAct() || cell || state.observing || state.result);
       button.addEventListener("click", () => state.reviewingResult ? selectReviewStone(index) : placeStone(index));
 
       if (cell) {
@@ -351,6 +497,7 @@
     entangleButton.disabled = Boolean(
       state.observing
       || state.result
+      || !canAct()
       || state.entangleRemaining[state.turn] === 0
       || !hasEligibleAnchor
     );
@@ -359,7 +506,7 @@
       ? "もつれ済み"
       : state.entangleMode ? "もつれ取消" : "もつれ 1";
 
-    observeButton.disabled = !state.observeUnlocked || state.entangleMode;
+    observeButton.disabled = !state.observeUnlocked || state.entangleMode || (!state.result && !canAct());
     observeButton.textContent = state.result
       ? state.reviewingResult ? "結果に戻る" : "確率を確認"
       : state.observing ? "観測をやめる" : "観測する";
@@ -370,6 +517,16 @@
       : state.observeUnlocked
         ? state.observing ? "観測をやめるまで次の駒は置けません。" : "観測は以降いつでも行えます。"
         : "駒が5つ連続すると観測できるようになります。";
+    if (playMode === "online") {
+      const myTurn = canAct();
+      boardElement.classList.toggle("waiting", !myTurn);
+      resetButton.disabled = onlineRole !== "black";
+      backToSetupButton.textContent = "通信を終了してルール選択へ戻る";
+    } else {
+      boardElement.classList.remove("waiting");
+      resetButton.disabled = false;
+      backToSetupButton.textContent = "ルール選択へ戻る";
+    }
   }
 
   observeButton.addEventListener("click", observe);
@@ -377,5 +534,23 @@
   resetButton.addEventListener("click", resetGame);
   startButton.addEventListener("click", startGame);
   backToSetupButton.addEventListener("click", backToSetup);
+  localModeButton.addEventListener("click", () => {
+    playMode = "local";
+    closeOnline();
+    localModeButton.classList.add("active");
+    onlineModeButton.classList.remove("active");
+    onlinePanel.classList.add("hidden");
+    startButton.classList.remove("hidden");
+  });
+  onlineModeButton.addEventListener("click", () => {
+    playMode = "online";
+    onlineModeButton.classList.add("active");
+    localModeButton.classList.remove("active");
+    onlinePanel.classList.remove("hidden");
+    startButton.classList.add("hidden");
+  });
+  createRoomButton.addEventListener("click", createRoom);
+  joinRoomButton.addEventListener("click", joinRoom);
+  roomCodeInput.addEventListener("input", () => { roomCodeInput.value = roomCodeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); });
   state = initialState();
 })();
